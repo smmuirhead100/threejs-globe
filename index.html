@@ -1,39 +1,179 @@
-<!DOCTYPE html>
+<head>
+  <style> body { margin: 0; } </style>
 
+  <script type="importmap">{ "imports": {
+    "three": "//unpkg.com/three/build/three.module.js",
+    "three/addons/": "//unpkg.com/three/examples/jsm/"
+  }}</script>
+  <script type="module">
+    import * as THREE from 'three';
+    window.THREE = THREE;
+  </script>
 
-<html lang="en">
+  <script src="//unpkg.com/three-globe" defer></script>
+<!--  <script src="../../dist/three-globe.js" defer></script>-->
+</head>
 
-  <head>
+<body>
+  <div id="globeViz"></div>
 
-    <title>Globe</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="img/favicon.png">
-    
-    <link rel="stylesheet" type="text/css" href="index.css">
+  <script type="module">
+    import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+    import { Vector3 } from 'three';
+    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 
-    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.151.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.151.0/examples/jsm/"
-        }
+    const markerSvg = `<svg viewBox="-4 0 36 36">
+      <path fill="currentColor" d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"></path>
+      <circle fill="black" cx="14" cy="14" r="7"></circle>
+    </svg>`;
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // Gen random data
+    const N = 20;
+    let endLocations = []
+
+    let arcsData = [...Array(N).keys()].map(() => {
+        const endLat = (Math.random() - 0.5) * 180;
+        const endLng = (Math.random() - 0.5) * 360;
+        endLocations.push({ lat: endLat, lng: endLng });
+        console.log("Running arcs Data")
+        return {
+            startLat: 34.05,  // Latitude for Los Angeles
+            startLng: -118.24,  // Longitude for Los Angeles
+            endLat: endLat,
+            endLng: endLng,
+            color: 'white'
+        };
+    });
+
+    // Gen pin data
+    let gData = []
+    // const gData = endLocations.map(loc => ({
+    //   lat: loc.lat,
+    //   lng: loc.lng,
+    //   size: 20,
+    //   color: 'white'
+    // }));
+
+    const Globe = new ThreeGlobe()
+      .globeImageUrl('/world.jpg')
+      .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+      .arcsData(arcsData)
+      .arcColor('color')
+      .arcDashLength(0.4)
+      .arcStroke(1.5)
+      .arcDashGap(4)
+      .arcDashInitialGap(() => Math.random() * 5)
+      .arcDashAnimateTime(1000)
+      // .htmlElementsData(gData)
+      // .htmlElement(d => {
+      //   const el = document.createElement('div');
+      //   el.innerHTML = markerSvg;
+      //   el.style.color = d.color;
+      //   el.style.width = `${d.size}px`;
+      //   return el;
+      // });
+
+    const updateGlobeData = () => {
+      // Create a new location with random coordinates
+      let endLat = (Math.random() - 0.5) * 180;
+      let endLng = (Math.random() - 0.5) * 360;
+      endLocations.push({ lat: endLat, lng: endLng });
+
+      // Remove the oldest element if endLocations length is greater than 30
+      if (endLocations.length > 1000) {
+        endLocations.shift();  // This removes the first item from the array
       }
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js" integrity="sha512-cOH8ndwGgPo+K7pTvMrqYbmI8u8k6Sho3js0gOqVWTmQMlLIi6TbqGWRTpf1ga8ci9H3iPsvDLr4X7xwhC/+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  </head>
+      // Map arcsData from endLocations
+      arcsData = endLocations.map(loc => ({
+        startLat: 34.05,  // Latitude for Los Angeles
+        startLng: -118.24,  // Longitude for Los Angeles
+        endLat: loc.lat,
+        endLng: loc.lng,
+        color: 'white'
+      }));
+      Globe.arcsData(arcsData);
+      
+      // Add new points
+      let gData = endLocations.map(loc => ({
+        lat: loc.lat,
+        lng: loc.lng,
+        size: 20,
+        color: 'white'
+      }));
+      Globe.htmlElementsData(gData)
+      Globe.htmlElement(d => {
+        const el = document.createElement('div');
+        el.innerHTML = markerSvg;
+        el.style.color = d.color;
+        el.style.width = `${d.size}px`;
+        return el;
+      });
 
+    };
 
-  <body>
+    // Setup renderer
+    const renderers = [new THREE.WebGLRenderer({ antialias: true }),  new CSS2DRenderer()];
 
-    <div class="container">
-      <canvas class="canvas"></canvas>
-    </div>
+    renderers.forEach((r, idx) => {
+      r.setSize(window.innerWidth, window.innerHeight);
+      if (idx == 0) {
+        r.setPixelRatio(window.devicePixelRatio);
+      }
+      if (idx > 0) {
+        // overlay additional on top of main renderer
+        r.domElement.style.position = 'absolute';
+        r.domElement.style.top = '0px';
+        r.domElement.style.pointerEvents = 'none';
+      }
+      document.getElementById('globeViz').appendChild(r.domElement);
+    });
 
-    <script src="index.js" type="module"></script> 
+    // renderer.setSize(window.innerWidth, window.innerHeight);
+    // renderer.setPixelRatio(window.devicePixelRatio);
+    // document.getElementById('globeViz').appendChild(renderer.domElement);
 
-  </body>
+    // Setup scene
+    const scene = new THREE.Scene();
+    scene.add(Globe);
+    scene.add(new THREE.AmbientLight(0xcccccc, Math.PI));
+    scene.add(new THREE.DirectionalLight(0xffffff, 0.6 * Math.PI));
 
-</html>
+    // Setup camera
+    const camera = new THREE.PerspectiveCamera();
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    camera.position.z = 300;
+
+    // Add camera controls
+    const tbControls = new TrackballControls(camera, renderers[0].domElement);
+    tbControls.minDistance = 101;
+    tbControls.rotateSpeed = 5;
+    tbControls.zoomSpeed = 0.8;
+
+    // Update pov when camera moves
+    Globe.setPointOfView(camera.position, Globe.position);
+    tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
+
+    // Kick-off renderer
+    let lastUpdateTime = 0; // Timestamp of the last update
+    function animate() {
+      requestAnimationFrame(animate);
+      tbControls.update();
+      
+      // Get the current timestamp
+      let currentTime = Date.now();
+      
+      // Check if 3 seconds have passed since the last update
+      if (currentTime - lastUpdateTime > 5000) {
+        updateGlobeData();  // Call the update function
+        lastUpdateTime = currentTime;  // Update the timestamp
+      }
+      
+      renderers.forEach(renderer => renderer.render(scene, camera));
+    }
+    animate()
+  </script>
+</body>
