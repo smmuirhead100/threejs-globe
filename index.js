@@ -1,5 +1,19 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { geoInterpolate } from 'https://cdn.skypack.dev/d3-geo';
+// import { geoInterpolate } from 'd3-geo'; 
+
+function toXYZ(lat, lon, radius) {
+  var phi = (90 - lat) * Math.PI / 180;
+  var theta = (lon + 180) * Math.PI / 180;
+
+  return new THREE.Vector3(
+      -radius * Math.sin(phi) * Math.cos(theta),
+      radius * Math.cos(phi),
+      radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
 
 const vertex = `
   #ifdef GL_ES
@@ -220,7 +234,7 @@ const setMap = () => {
 
   const setDots = () => {
 
-    const dotDensity  = 2.5;
+    const dotDensity  = 3.0;
     let   vector      = new THREE.Vector3();
 
     for (let lat = 90, i = 0; lat > -90; lat--, i++) {
@@ -387,3 +401,100 @@ const render = () => {
 }
 
 setScene();
+
+const drawLineBetweenTwoPoints = (startLatLon, endLatLon) => {
+  const earthRadius = 20; // Radius of the globe
+  const tubeThickness = 0.1
+
+  const startXYZ = toXYZ(startLatLon[0], startLatLon[1], earthRadius);
+  const endXYZ = toXYZ(endLatLon[0], endLatLon[1], earthRadius);
+
+  const d3Interpolate = geoInterpolate(
+      [startLatLon[1], startLatLon[0]],
+      [endLatLon[1], endLatLon[0]]
+  );
+  
+
+  const control1 = d3Interpolate(0.25);
+  const control2 = d3Interpolate(0.75);
+
+  // Increase arc height for a more pronounced curve
+  const arcHeightFactor = 1.5; // Adjust this factor as needed
+  const arcHeight = startXYZ.distanceTo(endXYZ) * 0.5 * arcHeightFactor + earthRadius;
+  const controlXYZ1 = toXYZ(control1[1], control1[0], arcHeight);
+  const controlXYZ2 = toXYZ(control2[1], control2[0], arcHeight);
+
+  const curve = new THREE.CubicBezierCurve3(startXYZ, controlXYZ1, controlXYZ2, endXYZ);
+
+  const geometry = new THREE.TubeGeometry(curve, 64, tubeThickness, 8);
+  console.log(geometry.attributes.position.count)
+  const meshMaterial = new THREE.MeshBasicMaterial({ color: "#f0f8ff" });
+  const mesh = new THREE.Mesh(geometry, meshMaterial);
+  return { mesh, geometry };
+}
+
+let startTime = performance.now();
+
+function drawAnimatedLine(mesh, geometry) {
+  let timeElapsed = performance.now() - startTime;
+  const progress = timeElapsed / 3000;  // Duration of the animation in milliseconds
+  let totalVertices = geometry.attributes.position.count * 5
+  // console.log(geometry.attributes)
+  // console.log(totalVertices)
+  let drawRangeCount = Math.floor(progress * totalVertices);
+
+  if (drawRangeCount < totalVertices) {
+    geometry.setDrawRange(0, drawRangeCount);
+    requestAnimationFrame(() => drawAnimatedLine(mesh, geometry));
+  } else {
+    console.log("WE ARE DONE")
+    console.log(totalVertices)
+    geometry.setDrawRange(0, totalVertices);
+  }
+}
+
+
+// const { mesh, geometry } = drawLineBetweenTwoPoints([34.0522, -118.2437], [40.7128, -74.0060]);
+// scene.add(mesh);
+// geometry.setDrawRange(0, 0);
+// drawAnimatedLine(mesh, geometry)
+
+// const { mesh: mesh1, geometry: geometry1 } = drawLineBetweenTwoPoints([34.0522, -118.2437], [47.6062, -122.3321]); // Miami to Seattle
+// scene.add(mesh1);
+// geometry1.setDrawRange(0, 0);
+// drawAnimatedLine(mesh1, geometry1);
+
+// const { mesh: mesh2, geometry: geometry2 } = drawLineBetweenTwoPoints([34.0522, -118.2437], [25.7617, -80.1918]); // Miami to Seattle
+// scene.add(mesh2);
+// geometry2.setDrawRange(0, 0);
+// drawAnimatedLine(mesh2, geometry2);
+
+
+
+const baseLocation = [34.0522, -118.2437]; // Coordinates for Los Angeles
+const destinations = [
+  [40.7128, -74.0060], // New York
+  [51.5074, -0.1278],  // London
+  [35.6895, 139.6917], // Tokyo
+  [48.8566, 2.3522],   // Paris
+  [55.7558, 37.6173],  // Moscow
+  [39.9042, 116.4074], // Beijing
+  [19.0760, 72.8777],  // Mumbai
+];
+
+let currentIndex = 0;
+
+function animateNextLine(scene) {
+  if (currentIndex >= destinations.length) {
+    currentIndex = 0; // Reset to loop continuously
+  }
+
+  let { mesh, geometry } = drawLineBetweenTwoPoints(baseLocation, destinations[currentIndex++]);
+  geometry.setDrawRange(0, 0);
+  scene.add(mesh)
+  drawAnimatedLine(mesh, geometry);
+
+  setTimeout(() => animateNextLine(scene), 3000);
+}
+
+animateNextLine(scene); // Start the animation loop
