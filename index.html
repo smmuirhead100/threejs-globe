@@ -22,8 +22,35 @@
     import { Vector3 } from 'three';
     import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
+    let API_KEY = ""
+let CLIENT_ID = ""
     let apiReady = false
+
+    
+async function fetchApiKey() {
+  try {
+    const response = await fetch('api/getEnv'); // Adjust URL if necessary
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    API_KEY = data.api;
+    CLIENT_ID = data.client;
+    handleClientLoad(); // Call handleClientLoad here after fetching and setting keys
+  } catch (error) {
+    console.error('Error fetching API Key:', error);
+  }
+}
+
+fetchApiKey().then(apiKey => {
+    const API_KEY=apiKey.api;
+    const CLIENT_ID=apiKey.client;
+    // Continue with initialization or setup that requires the API key
+    handleClientLoad()
+}).catch(error => {
+    console.error('Failed to fetch API Key:', error);
+    // Handle the error appropriately in your application
+});
 
     function handleClientLoad() {
         console.log("HERE")
@@ -33,14 +60,14 @@
     function initClient() {
       console.log("GAPI START")
       gapi.client.init({
-        apiKey: process.env.API_KEY,
+        apiKey: API_KEY,
         discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
         // scope: 'https://www.googleapis.com/auth/spreadsheets.readonly'
       }).then(function () {
         console.log("LOGGED IN")
         // gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
         // updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-        listMajors()
+        // listMajors()
       }, function(error) {
         console.log("GAPI error")
         console.error(JSON.stringify(error, null, 2));
@@ -63,7 +90,7 @@
   function gisLoaded() {
     console.log("GOT HERE")
         tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: process.env.CLIENT_ID,
+          client_id: CLIENT_ID,
           scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
           callback: '', // defined later
         });
@@ -72,21 +99,21 @@
       }
 
 
-  function listMajors() {
-    gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
-      range: 'Sheet1!A2:D',
-    }).then(function(response) {
-      var range = response.result;
-      if (range.values.length > 0) {
-        console.log('Data retrieved from Sheets:', range.values);
-      } else {
-        console.log('No data found.');
-      }
-    }, function(response) {
-      console.error('Failed to get data from Sheets:', response.result.error.message);
-    });
-  }
+  // function listMajors() {
+  //   gapi.client.sheets.spreadsheets.values.get({
+  //     spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
+  //     range: 'Sheet1!A2:D',
+  //   }).then(function(response) {
+  //     var range = response.result;
+  //     if (range.values.length > 0) {
+  //       console.log('Data retrieved from Sheets:', range.values);
+  //     } else {
+  //       console.log('No data found.');
+  //     }
+  //   }, function(response) {
+  //     console.error('Failed to get data from Sheets:', response.result.error.message);
+  //   });
+  // }
 
     const markerSvg = `<svg viewBox="-4 0 36 36">
       <path fill="currentColor" d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"></path>
@@ -263,8 +290,9 @@
     Globe.setPointOfView(camera.position, Globe.position);
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
 
+    fetchApiKey()
       // Kick-off renderer
-      handleClientLoad()
+      // handleClientLoad()
       let lastUpdateTime = 0; // Timestamp of the last update
       function animate() {
         requestAnimationFrame(animate);
@@ -283,5 +311,5 @@
       }
       animate()
   </script>
-  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  <!-- <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script> -->
 </body>
