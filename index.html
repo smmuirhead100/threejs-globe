@@ -16,11 +16,77 @@
 
 <body>
   <div id="globeViz"></div>
-
+  <script src="https://apis.google.com/js/api.js"></script>
   <script type="module">
     import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
     import { Vector3 } from 'three';
     import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    let apiReady = false
+
+    function handleClientLoad() {
+        console.log("HERE")
+        gapi.load('client:auth2', initClient);
+    }
+
+    function initClient() {
+      console.log("GAPI START")
+      gapi.client.init({
+        apiKey: 'AIzaSyDAEBSXn6d31pNsOXdz55XFtI8e4GWtphA',
+        // clientId: '954102195429-idj70a6pttef29appua7klbfvlc6kppj.apps.googleusercontent.com',
+        discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+        // scope: 'https://www.googleapis.com/auth/spreadsheets.readonly'
+      }).then(function () {
+        console.log("LOGGED IN")
+        // gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
+        // updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        listMajors()
+      }, function(error) {
+        console.log("GAPI error")
+        console.error(JSON.stringify(error, null, 2));
+      });
+      console.log("GAPI END")
+    }
+    
+
+  function updateSignInStatus(isSignedIn) {
+    if (isSignedIn && gapi.client.sheets) {
+      console.log("SIGNED IN")
+      apiReady = true;
+      // listMajors()
+    } else {
+      console.log("NOT SIGNER IN")
+      gapi.auth2.getAuthInstance().signIn();
+    }
+  }
+
+  function gisLoaded() {
+    console.log("GOT HERE")
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: '954102195429-idj70a6pttef29appua7klbfvlc6kppj.apps.googleusercontent.com',
+          scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+          callback: '', // defined later
+        });
+        gisInited = true;
+        maybeEnableButtons();
+      }
+
+
+  function listMajors() {
+    gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
+      range: 'Sheet1!A2:D',
+    }).then(function(response) {
+      var range = response.result;
+      if (range.values.length > 0) {
+        console.log('Data retrieved from Sheets:', range.values);
+      } else {
+        console.log('No data found.');
+      }
+    }, function(response) {
+      console.error('Failed to get data from Sheets:', response.result.error.message);
+    });
+  }
 
     const markerSvg = `<svg viewBox="-4 0 36 36">
       <path fill="currentColor" d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"></path>
@@ -28,6 +94,18 @@
     </svg>`;
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    const fetchSheetData = async () => {
+      const { googleSheets, spreadsheetId } = await authenticateSheets();
+      const range = 'Sheet1!B2:D10'; // Adjust the range to match your sheet structure
+
+      const response = await googleSheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+      });
+
+      return response.data.values;
+    };
 
     // Gen random data
     const N = 20;
@@ -43,18 +121,10 @@
             startLng: -118.24,  // Longitude for Los Angeles
             endLat: endLat,
             endLng: endLng,
-            color: 'white'
+            color: 'white',
+            initialGap: Math.random() * 5,
         };
     });
-
-    // Gen pin data
-    let gData = []
-    // const gData = endLocations.map(loc => ({
-    //   lat: loc.lat,
-    //   lng: loc.lng,
-    //   size: 20,
-    //   color: 'white'
-    // }));
 
     const Globe = new ThreeGlobe()
       .globeImageUrl('/world.jpg')
@@ -62,57 +132,92 @@
       .arcsData(arcsData)
       .arcColor('color')
       .arcDashLength(0.4)
-      .arcStroke(1.5)
+      .arcStroke(1.1)
       .arcDashGap(4)
-      .arcDashInitialGap(() => Math.random() * 5)
+      .arcDashInitialGap((d) => d.initialGap)
       .arcDashAnimateTime(1000)
-      // .htmlElementsData(gData)
-      // .htmlElement(d => {
-      //   const el = document.createElement('div');
-      //   el.innerHTML = markerSvg;
-      //   el.style.color = d.color;
-      //   el.style.width = `${d.size}px`;
-      //   return el;
-      // });
 
-    const updateGlobeData = () => {
-      // Create a new location with random coordinates
-      let endLat = (Math.random() - 0.5) * 180;
-      let endLng = (Math.random() - 0.5) * 360;
-      endLocations.push({ lat: endLat, lng: endLng });
-
-      // Remove the oldest element if endLocations length is greater than 30
-      if (endLocations.length > 1000) {
-        endLocations.shift();  // This removes the first item from the array
-      }
-
-      // Map arcsData from endLocations
-      arcsData = endLocations.map(loc => ({
-        startLat: 34.05,  // Latitude for Los Angeles
-        startLng: -118.24,  // Longitude for Los Angeles
-        endLat: loc.lat,
-        endLng: loc.lng,
-        color: 'white'
-      }));
-      Globe.arcsData(arcsData);
+    //   const updateGlobeData = async () => {
+    //   const sheetData = await fetchSheetData();
       
-      // Add new points
-      let gData = endLocations.map(loc => ({
-        lat: loc.lat,
-        lng: loc.lng,
-        size: 20,
-        color: 'white'
-      }));
-      Globe.htmlElementsData(gData)
-      Globe.htmlElement(d => {
-        const el = document.createElement('div');
-        el.innerHTML = markerSvg;
-        el.style.color = d.color;
-        el.style.width = `${d.size}px`;
-        return el;
-      });
+    //   // Filter out any rows that are empty or incomplete
+    //   const validData = sheetData.filter(row => row.length === 3 && row.every(cell => cell !== ''));
 
-    };
+    //   // Update endLocations with data from the sheet
+    //   endLocations = validData.map(row => ({
+    //     lat: parseFloat(row[2]),  // Assuming latitude is the third column
+    //     lng: parseFloat(row[1]),  // Assuming longitude is the second column
+    //   }));
+
+    //   // Map arcsData from endLocations
+    //   arcsData = endLocations.map(loc => ({
+    //     startLat: 34.05,  // Latitude for Los Angeles
+    //     startLng: -118.24,  // Longitude for Los Angeles
+    //     endLat: loc.lat,
+    //     endLng: loc.lng,
+    //     color: 'white',
+    //     initialGap: Math.random() * 60,  // Spread out over a minute
+    //   }));
+    //   Globe.arcsData(arcsData);
+    //   Globe.arcDashInitialGap((d) => d.initialGap)
+
+    // };
+
+    function updateGlobeData() {
+      gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
+        range: 'Sheet1!B2:D10',
+      }).then(function(response) {
+        const rows = response.result.values;
+        if (rows.length) {
+          console.log('Data retrieved from Sheets:', rows);
+          const validData = rows.filter(row => row.length >= 3 && !isNaN(parseFloat(row[1])) && !isNaN(parseFloat(row[2])));
+
+          console.log("valiud data", validData)
+          
+          endLocations = validData.map(row => ({
+            lat: parseFloat(row[1]),  // Assuming latitude is the third column
+            lng: parseFloat(row[2]),  // Assuming longitude is the second column
+          }));
+
+          console.log("END LOCATIONS")
+          console.log(endLocations)
+
+          arcsData = endLocations.map(loc => ({
+            startLat: 34.05,  // Latitude for Los Angeles
+            startLng: -118.24,  // Longitude for Los Angeles
+            endLat: loc.lat,  
+            endLng: loc.lng,
+            color: 'white',
+            initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
+          }));
+          Globe.arcsData(arcsData);
+
+          // Add new points
+          let gData = endLocations.map(loc => ({
+              lat: loc.lat,
+              lng: loc.lng,
+              size: 20,
+              color: 'white'
+            }));
+            Globe.htmlElementsData(gData)
+            Globe.htmlElement(d => {
+              const el = document.createElement('div');
+              el.innerHTML = markerSvg;
+              el.style.color = d.color;
+              el.style.width = `${d.size}px`;
+              return el;
+          });
+
+        } else {
+          console.log('No data found.');
+        }
+      }, function(response) {
+        console.error('Failed to get data from Sheets:', response.result.error.message);
+      });
+}
+
+    
 
     // Setup renderer
     const renderers = [new THREE.WebGLRenderer({ antialias: true }),  new CSS2DRenderer()];
@@ -145,35 +250,48 @@
     const camera = new THREE.PerspectiveCamera();
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    camera.position.z = 300;
+    let altitudeHelper = 100
+
+    const latitude = 34.05;
+    const longitude = -118.24;
+    // altitude in globe radius units
+    let altitude = altitudeHelper / Globe.getGlobeRadius();
+    let { x, y, z } = Globe.getCoords(latitude, longitude, altitude);
+    camera.position.x = x;
+    camera.position.y = y;
+    camera.position.z = z
 
     // Add camera controls
-    const tbControls = new TrackballControls(camera, renderers[0].domElement);
-    tbControls.minDistance = 101;
-    tbControls.rotateSpeed = 5;
-    tbControls.zoomSpeed = 0.8;
+    const latitudeInRadians = THREE.MathUtils.degToRad(latitude + 25);
+    const tbControls = new OrbitControls( camera, renderers[0].domElement );
+    // Lock Vertical rotation
+    tbControls.maxPolarAngle = latitudeInRadians;
+    tbControls.minPolarAngle = latitudeInRadians;
+
 
     // Update pov when camera moves
     Globe.setPointOfView(camera.position, Globe.position);
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
 
-    // Kick-off renderer
-    let lastUpdateTime = 0; // Timestamp of the last update
-    function animate() {
-      requestAnimationFrame(animate);
-      tbControls.update();
-      
-      // Get the current timestamp
-      let currentTime = Date.now();
-      
-      // Check if 3 seconds have passed since the last update
-      if (currentTime - lastUpdateTime > 5000) {
-        updateGlobeData();  // Call the update function
-        lastUpdateTime = currentTime;  // Update the timestamp
+      // Kick-off renderer
+      handleClientLoad()
+      let lastUpdateTime = 0; // Timestamp of the last update
+      function animate() {
+        requestAnimationFrame(animate);
+        tbControls.update();
+        
+        // Get the current timestamp
+        let currentTime = Date.now();
+        
+        // Update data every minute
+        if (currentTime - lastUpdateTime > (endLocations.length * 1000)) {
+          updateGlobeData();  // Call the update function
+          lastUpdateTime = currentTime;  // Update the timestamp
+        }
+        
+        renderers.forEach(renderer => renderer.render(scene, camera));
       }
-      
-      renderers.forEach(renderer => renderer.render(scene, camera));
-    }
-    animate()
+      animate()
   </script>
+  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
