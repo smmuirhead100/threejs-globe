@@ -22,6 +22,8 @@
     import { Vector3 } from 'three';
     import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    require('dotenv').config();
+
     let apiReady = false
 
     function handleClientLoad() {
@@ -32,8 +34,7 @@
     function initClient() {
       console.log("GAPI START")
       gapi.client.init({
-        apiKey: 'AIzaSyDAEBSXn6d31pNsOXdz55XFtI8e4GWtphA',
-        // clientId: '954102195429-idj70a6pttef29appua7klbfvlc6kppj.apps.googleusercontent.com',
+        apiKey: process.env.API_KEY,
         discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
         // scope: 'https://www.googleapis.com/auth/spreadsheets.readonly'
       }).then(function () {
@@ -63,7 +64,7 @@
   function gisLoaded() {
     console.log("GOT HERE")
         tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: '954102195429-idj70a6pttef29appua7klbfvlc6kppj.apps.googleusercontent.com',
+          client_id: process.env.CLIENT_ID,
           scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
           callback: '', // defined later
         });
@@ -109,33 +110,20 @@
 
     // Gen random data
     const N = 20;
-    let endLocations = []
+    let endLocations = [0, 0, 0, 0, 0, 0, 0, 0]
 
-    let arcsData = [...Array(N).keys()].map(() => {
-        const endLat = (Math.random() - 0.5) * 180;
-        const endLng = (Math.random() - 0.5) * 360;
-        endLocations.push({ lat: endLat, lng: endLng });
-        console.log("Running arcs Data")
-        return {
-            startLat: 34.05,  // Latitude for Los Angeles
-            startLng: -118.24,  // Longitude for Los Angeles
-            endLat: endLat,
-            endLng: endLng,
-            color: 'white',
-            initialGap: Math.random() * 5,
-        };
-    });
+    let arcsData = []
 
     const Globe = new ThreeGlobe()
       .globeImageUrl('/world.jpg')
-      .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-      .arcsData(arcsData)
-      .arcColor('color')
-      .arcDashLength(0.4)
-      .arcStroke(1.1)
-      .arcDashGap(4)
-      .arcDashInitialGap((d) => d.initialGap)
-      .arcDashAnimateTime(1000)
+      // .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+      // .arcsData(arcsData)
+      // .arcColor('color')
+      // .arcDashLength(0.4)
+      // .arcStroke(.4)
+      // .arcDashGap(4)
+      // .arcDashInitialGap((d) => d.initialGap)
+      // .arcDashAnimateTime(1000)
 
     //   const updateGlobeData = async () => {
     //   const sheetData = await fetchSheetData();
@@ -166,7 +154,7 @@
     function updateGlobeData() {
       gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
-        range: 'Sheet1!B2:D10',
+        range: 'Sheet1!B2:D1000',
       }).then(function(response) {
         const rows = response.result.values;
         if (rows.length) {
@@ -180,23 +168,26 @@
             lng: parseFloat(row[2]),  // Assuming longitude is the second column
           }));
 
-          console.log("END LOCATIONS")
-          console.log(endLocations)
-
           arcsData = endLocations.map(loc => ({
             startLat: 34.05,  // Latitude for Los Angeles
             startLng: -118.24,  // Longitude for Los Angeles
             endLat: loc.lat,  
-            endLng: loc.lng,
+            endLng: -loc.lng,
             color: 'white',
             initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
           }));
-          Globe.arcsData(arcsData);
+          Globe.arcsData(arcsData)
+          Globe.arcColor('color')
+          Globe.arcDashLength(0.4)
+          Globe.arcStroke(.4)
+          Globe.arcDashGap(4)
+          Globe.arcDashInitialGap((d) => d.initialGap)
+          Globe.arcDashAnimateTime(1000);
 
           // Add new points
           let gData = endLocations.map(loc => ({
               lat: loc.lat,
-              lng: loc.lng,
+              lng: -loc.lng,
               size: 20,
               color: 'white'
             }));
