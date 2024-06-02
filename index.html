@@ -177,10 +177,12 @@ fetchApiKey().then(apiKey => {
 
     // };
 
+    let globalMarkerData = [];
+
     function updateGlobeData() {
       gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
-        range: 'Sheet1!B2:D1000',
+        range: 'Sheet1!B2:D1000',  // Up to 1000 rows for now
       }).then(function(response) {
         const rows = response.result.values;
         if (rows.length) {
@@ -202,6 +204,7 @@ fetchApiKey().then(apiKey => {
             color: 'white',
             initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
           }));
+
           Globe.arcsData(arcsData)
           Globe.arcColor('color')
           Globe.arcDashLength(0.4)
@@ -210,20 +213,11 @@ fetchApiKey().then(apiKey => {
           Globe.arcDashInitialGap((d) => d.initialGap)
           Globe.arcDashAnimateTime(1000);
 
-          // Add new points
-          let gData = endLocations.map(loc => ({
-              lat: loc.lat,
-              lng: -loc.lng,
-              size: 20,
-              color: 'white'
-            }));
-            Globe.htmlElementsData(gData)
-            Globe.htmlElement(d => {
-              const el = document.createElement('div');
-              el.innerHTML = markerSvg;
-              el.style.color = d.color;
-              el.style.width = `${d.size}px`;
-              return el;
+          // Schedule adding markers after the corresponding arcs have finished animating
+          arcsData.forEach((arc, index) => {
+              setTimeout(() => {
+                  addMarker(endLocations[index]);
+              }, ((arc.initialGap*1000)));  // arcDashAnimateTime is 1000 ms
           });
 
         } else {
@@ -233,7 +227,27 @@ fetchApiKey().then(apiKey => {
         console.error('Failed to get data from Sheets:', response.result.error.message);
       });
 }
+    function addMarker(location) {
+        let newMarkerData = {
+            lat: location.lat,
+            lng: -location.lng,
+            size: 20,
+            color: 'white'
+        };
 
+        // Add the new marker data to the global marker data array
+        globalMarkerData.push(newMarkerData);
+
+        // Update Globe with all marker data, both old and new
+        Globe.htmlElementsData(globalMarkerData);
+        Globe.htmlElement(d => {
+            const el = document.createElement('img');  // Use an image element
+            el.src = 'Hpin.png';                      // Set the source of the image
+            el.style.width = `50px`;                  // Set the width of the image
+            el.style.height = 'auto';                 // Maintain the aspect ratio of the image
+            return el;
+        });
+    }
     
 
     // Setup renderer
@@ -267,7 +281,7 @@ fetchApiKey().then(apiKey => {
     const camera = new THREE.PerspectiveCamera();
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    let altitudeHelper = 100
+    let altitudeHelper = 150
 
     const latitude = 34.05;
     const longitude = -118.24;
@@ -281,10 +295,13 @@ fetchApiKey().then(apiKey => {
     // Add camera controls
     const latitudeInRadians = THREE.MathUtils.degToRad(latitude + 25);
     const tbControls = new OrbitControls( camera, renderers[0].domElement );
-    // Lock Vertical rotation
+
+    // Lock Vertical rotation, auto rotate
     tbControls.maxPolarAngle = latitudeInRadians;
     tbControls.minPolarAngle = latitudeInRadians;
-
+    tbControls.autoRotate = true;
+    tbControls.autoRotateSpeed *= -0.15;
+    tbControls.enableDamping = true;
 
     // Update pov when camera moves
     Globe.setPointOfView(camera.position, Globe.position);
@@ -294,10 +311,11 @@ fetchApiKey().then(apiKey => {
       // Kick-off renderer
       // handleClientLoad()
       let lastUpdateTime = 0; // Timestamp of the last update
-      function animate() {
+      async function animate() {
         requestAnimationFrame(animate);
-        tbControls.update();
-        
+
+        tbControls.update(); // Rotate independently of refresh rate
+
         // Get the current timestamp
         let currentTime = Date.now();
         
