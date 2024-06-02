@@ -142,40 +142,6 @@ fetchApiKey().then(apiKey => {
 
     const Globe = new ThreeGlobe()
       .globeImageUrl('/world.jpg')
-      // .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-      // .arcsData(arcsData)
-      // .arcColor('color')
-      // .arcDashLength(0.4)
-      // .arcStroke(.4)
-      // .arcDashGap(4)
-      // .arcDashInitialGap((d) => d.initialGap)
-      // .arcDashAnimateTime(1000)
-
-    //   const updateGlobeData = async () => {
-    //   const sheetData = await fetchSheetData();
-      
-    //   // Filter out any rows that are empty or incomplete
-    //   const validData = sheetData.filter(row => row.length === 3 && row.every(cell => cell !== ''));
-
-    //   // Update endLocations with data from the sheet
-    //   endLocations = validData.map(row => ({
-    //     lat: parseFloat(row[2]),  // Assuming latitude is the third column
-    //     lng: parseFloat(row[1]),  // Assuming longitude is the second column
-    //   }));
-
-    //   // Map arcsData from endLocations
-    //   arcsData = endLocations.map(loc => ({
-    //     startLat: 34.05,  // Latitude for Los Angeles
-    //     startLng: -118.24,  // Longitude for Los Angeles
-    //     endLat: loc.lat,
-    //     endLng: loc.lng,
-    //     color: 'white',
-    //     initialGap: Math.random() * 60,  // Spread out over a minute
-    //   }));
-    //   Globe.arcsData(arcsData);
-    //   Globe.arcDashInitialGap((d) => d.initialGap)
-
-    // };
 
     let globalMarkerData = [];
 
