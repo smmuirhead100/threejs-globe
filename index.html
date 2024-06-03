@@ -172,7 +172,7 @@ fetchApiKey().then(apiKey => {
     function addMarker(location) {
         let newMarkerData = {
             lat: location.lat,
-            lng: -location.lng,
+            lng: location.lng,
             size: 20,
             color: 'white'
         };
