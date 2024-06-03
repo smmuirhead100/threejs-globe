@@ -124,7 +124,7 @@ fetchApiKey().then(apiKey => {
     function updateGlobeData() {
       gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
-        range: 'Sheet1!B2:D1000',  // Up to 1000 rows for now
+        range: 'Sheet1!B2:D2000',  // Up to 1000 rows for now
       }).then(function(response) {
         const rows = response.result.values;
         if (rows.length) {
