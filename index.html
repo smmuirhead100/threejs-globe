@@ -142,7 +142,7 @@ fetchApiKey().then(apiKey => {
             startLat: 34.05,  // Latitude for Los Angeles
             startLng: -118.24,  // Longitude for Los Angeles
             endLat: loc.lat,  
-            endLng: -loc.lng,
+            endLng: loc.lng,
             color: 'white',
             initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
           }));
