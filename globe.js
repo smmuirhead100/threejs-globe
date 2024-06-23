@@ -10,10 +10,11 @@ import fontJson from './fonts/helvetiker_bold.typeface.json' assert { type: "jso
 let API_KEY = ""
 let CLIENT_ID = ""
 let apiReady = false
-
+let gotData = false
     
 async function fetchApiKey() {
   try {
+    console.log("GETTING API")
     const response = await fetch('api/getEnv'); // Adjust URL if necessary
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,51 +55,12 @@ fetchApiKey().then(apiKey => {
         console.error(JSON.stringify(error, null, 2));
       });
     }
-    
-
-  function updateSignInStatus(isSignedIn) {
-    if (isSignedIn && gapi.client.sheets) {
-      apiReady = true;
-      // listMajors()
-    } else {
-      gapi.auth2.getAuthInstance().signIn();
-    }
-  }
-
-  function gisLoaded() {
-    console.log("GOT HERE")
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
-          callback: '', // defined later
-        });
-        gisInited = true;
-        maybeEnableButtons();
-      }
-
-
-    const markerSvg = `<svg viewBox="-4 0 36 36">
-      <path fill="currentColor" d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"></path>
-      <circle fill="black" cx="14" cy="14" r="7"></circle>
-    </svg>`;
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-    const fetchSheetData = async () => {
-      const { googleSheets, spreadsheetId } = await authenticateSheets();
-      const range = 'Sheet1!B2:D10'; // Adjust the range to match your sheet structure
-
-      const response = await googleSheets.spreadsheets.values.get({
-        spreadsheetId,
-        range,
-      });
-
-      return response.data.values;
-    };
-
     // Gen random data
     const N = 20;
-    let endLocations = [0, 0, 0, 0, 0]
+    let endLocations = []
 
     let arcsData = []
 
@@ -107,15 +69,23 @@ fetchApiKey().then(apiKey => {
 
     let globalMarkerData = [];
 
-async function updateGlobeData() {
+    async function updateGlobeData() {
       try {
+        console.log("first pass")
+        console.log(gotData)
+        if (gotData == true) {
+          return
+        }
+        gotData = true
         const response = await gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
           range: 'Sheet1!B2:D2000',  // Up to 1000 rows for now
         });
-    
+        
         const rows = response.result.values;
         if (rows.length) {
+          gotData = true
+          console.log(gotData)
           console.log('Data retrieved from Sheets:', rows);
           const validData = rows.filter(row => row.length >= 3 && !isNaN(parseFloat(row[1])) && !isNaN(parseFloat(row[2])));
     
@@ -126,15 +96,19 @@ async function updateGlobeData() {
             lng: parseFloat(row[2]),  // Assuming longitude is the second column
           }));
     
-          arcsData = endLocations.map(loc => ({
+          // Limit the number of arcs to 100
+          const limitedEndLocations = endLocations.slice(-100);
+    
+          arcsData = limitedEndLocations.map(loc => ({
             startLat: 34.05,  // Latitude for Los Angeles
             startLng: -118.24,  // Longitude for Los Angeles
             endLat: loc.lat,
             endLng: loc.lng,
             color: 'white',
-            initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
+            initialGap: Math.random() * (limitedEndLocations.length / 2),  // About one per half sec
           }));
     
+          console.log("ADDING ARCS DATA");
           Globe.arcsData(arcsData)
             .arcColor('color')
             .arcDashLength(0.4)
@@ -144,9 +118,10 @@ async function updateGlobeData() {
             .arcDashAnimateTime(1000);
     
           // Schedule adding markers after the corresponding arcs have finished animating
+          console.log("ADDING MARKERS");
           arcsData.forEach((arc, index) => {
             setTimeout(() => {
-              addMarker(endLocations[index]);
+              addMarker(limitedEndLocations[index]);
             }, ((arc.initialGap * 1000)));  // arcDashAnimateTime is 1000 ms
           });
         } else {
@@ -155,7 +130,9 @@ async function updateGlobeData() {
       } catch (error) {
         console.error('Failed to get data from Sheets:', error);
       }
-}
+      console.log("DONE ADDING MARKERS");
+    }
+
     function addMarker(location) {
         let newMarkerData = {
             lat: location.lat,
@@ -278,20 +255,20 @@ fetchApiKey()
 
 let lastUpdateTime = 0; // Timestamp of the last update
 async function animate() {
-  sleep(1000)
   requestAnimationFrame(animate);
 
   tbControls.update(); // Rotate independently of refresh rate
 
   // Get the current timestamp
-  let currentTime = Date.now();
+  // let currentTime = Date.now();
   
   // Update data every minute
-  if (currentTime - lastUpdateTime > (endLocations.length * 1000)) {
-    // updateGlobeData();  // Call the update function
-    lastUpdateTime = currentTime;  // Update the timestamp
-  }
+  // if (currentTime - lastUpdateTime > (endLocations.length * 1000)) {
+  //   // updateGlobeData();  // Call the update function
+  //   lastUpdateTime = currentTime;  // Update the timestamp
+  // }
   
+  console.log("rendering")
   renderers.forEach(renderer => renderer.render(scene, camera));
 }
 
