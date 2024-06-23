@@ -258,6 +258,10 @@ function addTextBehindEarth() {
     tbControls.autoRotateSpeed *= -0.15;
     tbControls.enableDamping = true;
 
+    // Disable zoom and pan
+    tbControls.enableZoom = false;
+    // tbControls.enablePan = false;
+
     // Update pov when camera moves
     Globe.setPointOfView(camera.position, Globe.position);
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
