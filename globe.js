@@ -224,6 +224,8 @@ fetchApiKey().then(apiKey => {
     // Lock Vertical rotation, auto rotate
     tbControls.maxPolarAngle = latitudeInRadians;
     tbControls.minPolarAngle = latitudeInRadians;
+    tbControls.maxDistance = 800
+    tbControls.minDistance = 200
     tbControls.autoRotate = true;
     tbControls.autoRotateSpeed *= -0.15;
     tbControls.enableDamping = true;
