@@ -206,6 +206,7 @@ function addTextBehindEarth() {
 
     // Setup scene
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x210F29);
     scene.add(Globe);
     scene.add(new THREE.AmbientLight(0xcccccc, Math.PI));
     scene.add(new THREE.DirectionalLight(0xffffff, 0.6 * Math.PI));
