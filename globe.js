@@ -7,12 +7,6 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// if (!window.WebGLRenderingContext) {
-//   alert("Your browser does not support WebGL.");
-// } else {
-//   await sleep(10000) 
-// }
-
 let API_KEY = ""
 let CLIENT_ID = ""
 let apiReady = false
@@ -219,7 +213,7 @@ function addTextBehindEarth() {
     const camera = new THREE.PerspectiveCamera();
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    let altitudeHelper = 150
+    let altitudeHelper = 200
 
     const latitude = 34.05;
     const longitude = -118.24;
