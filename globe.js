@@ -7,6 +7,29 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+let mouse = { x: 0, y: 0 };
+
+const globeCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+const interactionRadius = 200;  // Adjust this value based on your requirements
+
+function isMouseNearCenter() {
+  const dx = mouse.x - globeCenter.x;
+  const dy = mouse.y - globeCenter.y;
+  console.log(mouse.x)
+  console.log(mouse.y)
+  console.log("------------------")
+  console.log(globeCenter.x)
+  console.log(globeCenter.y)
+  console.log("-----------")
+  console.log("-----------")
+  console.log("-----------")
+  console.log("-----------")
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  return distance <= interactionRadius;
+}
+
+
+
 let API_KEY = ""
 let CLIENT_ID = ""
 let apiReady = false
@@ -246,6 +269,13 @@ function addTextBehindEarth() {
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
 
 
+    renderers[0].domElement.addEventListener('mousemove', (event) => {
+      const rect = renderers[0].domElement.getBoundingClientRect();
+      mouse.x = event.clientX - rect.left;
+      mouse.y = event.clientY - rect.top;
+    });
+
+
 
 fetchApiKey()
 
@@ -255,6 +285,8 @@ fetchApiKey()
 let lastUpdateTime = 0; // Timestamp of the last update
 async function animate() {
   requestAnimationFrame(animate);
+
+  tbControls.enabled = isMouseNearCenter();
 
   tbControls.update(); // Rotate independently of refresh rate
 
