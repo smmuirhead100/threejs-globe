@@ -7,29 +7,6 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-let mouse = { x: 0, y: 0 };
-
-const globeCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-const interactionRadius = 200;  // Adjust this value based on your requirements
-
-function isMouseNearCenter() {
-  const dx = mouse.x - globeCenter.x;
-  const dy = mouse.y - globeCenter.y;
-  console.log(mouse.x)
-  console.log(mouse.y)
-  console.log("------------------")
-  console.log(globeCenter.x)
-  console.log(globeCenter.y)
-  console.log("-----------")
-  console.log("-----------")
-  console.log("-----------")
-  console.log("-----------")
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  return distance <= interactionRadius;
-}
-
-
-
 let API_KEY = ""
 let CLIENT_ID = ""
 let apiReady = false
@@ -269,12 +246,43 @@ function addTextBehindEarth() {
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
 
 
-    renderers[0].domElement.addEventListener('mousemove', (event) => {
-      const rect = renderers[0].domElement.getBoundingClientRect();
-      mouse.x = event.clientX - rect.left;
-      mouse.y = event.clientY - rect.top;
-    });
+// Mouse stuff
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let globeIntersects = false;
 
+renderers[0].domElement.addEventListener('mousemove', onMouseMove);
+renderers[0].domElement.addEventListener('mousedown', onMouseDown);
+renderers[0].domElement.addEventListener('touchstart', onTouchStart);
+
+function onMouseMove(event) {
+  const rect = renderers[0].domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  checkGlobeIntersection();
+}
+
+function onMouseDown(event) {
+  const rect = renderers[0].domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  checkGlobeIntersection();
+}
+
+function onTouchStart(event) {
+  if (event.touches.length > 0) {
+    const rect = renderers[0].domElement.getBoundingClientRect();
+    mouse.x = ((event.touches[0].clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.touches[0].clientY - rect.top) / rect.height) * 2 + 1;
+    checkGlobeIntersection();
+  }
+}
+
+function checkGlobeIntersection() {
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObject(Globe, true);
+  globeIntersects = intersects.length > 0;
+}
 
 
 fetchApiKey()
@@ -286,7 +294,7 @@ let lastUpdateTime = 0; // Timestamp of the last update
 async function animate() {
   requestAnimationFrame(animate);
 
-  tbControls.enabled = isMouseNearCenter();
+  tbControls.enabled = globeIntersects;
 
   tbControls.update(); // Rotate independently of refresh rate
 
