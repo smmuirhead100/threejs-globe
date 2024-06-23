@@ -239,7 +239,7 @@ function addTextBehindEarth() {
 
     // Disable zoom and pan
     tbControls.enableZoom = false;
-    // tbControls.enablePan = false;
+    tbControls.enablePan = false;
 
     // Update pov when camera moves
     Globe.setPointOfView(camera.position, Globe.position);
