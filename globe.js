@@ -164,13 +164,16 @@ async function updateGlobeData() {
             color: 'white'
         };
 
+        // Ensure the marker data array does not exceed 100 entries
+        if (globalMarkerData.length > 100) {
+            globalMarkerData.shift(); // Remove the oldest marker data
+        }
+
         // Add the new marker data to the global marker data array
         globalMarkerData.push(newMarkerData);
 
         // Update Globe with all marker data, both old and new
         Globe.htmlElementsData(globalMarkerData);
-        console.log("window")
-        console.log(window.innerWidth)
         Globe.htmlElement(d => {
             const el = document.createElement('img');  // Use an image element
             el.src = 'Hpin.png';
@@ -275,6 +278,7 @@ fetchApiKey()
 
 let lastUpdateTime = 0; // Timestamp of the last update
 async function animate() {
+  sleep(1000)
   requestAnimationFrame(animate);
 
   tbControls.update(); // Rotate independently of refresh rate
@@ -292,26 +296,4 @@ async function animate() {
 }
 
 // addTextBehindEarth();
-// Function to load and spin the pin image
-function spinPin() {
-  const textureLoader = new THREE.TextureLoader();
-  console.log("Loading image")
-  const pinTexture = textureLoader.load('Hpin.png');
-  const pinMaterial = new THREE.SpriteMaterial({ map: pinTexture });
-  const pinSprite = new THREE.Sprite(pinMaterial);
-  
-  pinSprite.scale.set(0.5, 0.5, 0.5); // Set the size of the pin
-  scene.add(pinSprite);
-
-  // Spin the pin
-  function spin() {
-    pinSprite.rotation.z += 0.01; // Adjust rotation speed here
-    requestAnimationFrame(spin);
-    renderers[0].render(scene, camera)
-  }
-  console.log("SPINNGIN")
-  spin();
-}
-spinPin()
-await sleep(2000)
 animate()
