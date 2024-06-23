@@ -4,8 +4,14 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as THREE from 'three';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-import fontJson from './fonts/helvetiker_bold.typeface.json' assert { type: "json" };
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// if (!window.WebGLRenderingContext) {
+//   alert("Your browser does not support WebGL.");
+// } else {
+//   await sleep(10000) 
+// }
 
 let API_KEY = ""
 let CLIENT_ID = ""
@@ -55,8 +61,6 @@ fetchApiKey().then(apiKey => {
         console.error(JSON.stringify(error, null, 2));
       });
     }
-
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // Gen random data
     const N = 20;
