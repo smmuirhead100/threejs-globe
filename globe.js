@@ -1,7 +1,11 @@
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 import { Vector3 } from 'three';
-import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import fontJson from './fonts/helvetiker_bold.typeface.json' assert { type: "json" };
+
 
 let API_KEY = ""
 let CLIENT_ID = ""
@@ -45,6 +49,7 @@ fetchApiKey().then(apiKey => {
         discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
       }).then(function () {
         console.log("LOGGED IN")
+        updateGlobeData()
       }, function(error) {
         console.error(JSON.stringify(error, null, 2));
       });
@@ -93,7 +98,7 @@ fetchApiKey().then(apiKey => {
 
     // Gen random data
     const N = 20;
-    let endLocations = [0, 0, 0, 0, 0, 0, 0, 0]
+    let endLocations = [0, 0, 0, 0, 0]
 
     let arcsData = []
 
@@ -102,53 +107,54 @@ fetchApiKey().then(apiKey => {
 
     let globalMarkerData = [];
 
-    function updateGlobeData() {
-      gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
-        range: 'Sheet1!B2:D2000',  // Up to 1000 rows for now
-      }).then(function(response) {
+async function updateGlobeData() {
+      try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: '1b_1jISIYUwusGR95X4Bg5EqG5LHJQednazkXEr2aKHs',
+          range: 'Sheet1!B2:D2000',  // Up to 1000 rows for now
+        });
+    
         const rows = response.result.values;
         if (rows.length) {
           console.log('Data retrieved from Sheets:', rows);
           const validData = rows.filter(row => row.length >= 3 && !isNaN(parseFloat(row[1])) && !isNaN(parseFloat(row[2])));
-
-          console.log("valiud data", validData)
-          
+    
+          console.log("valid data", validData);
+    
           endLocations = validData.map(row => ({
             lat: parseFloat(row[1]),  // Assuming latitude is the third column
             lng: parseFloat(row[2]),  // Assuming longitude is the second column
           }));
-
+    
           arcsData = endLocations.map(loc => ({
             startLat: 34.05,  // Latitude for Los Angeles
             startLng: -118.24,  // Longitude for Los Angeles
-            endLat: loc.lat,  
+            endLat: loc.lat,
             endLng: loc.lng,
             color: 'white',
             initialGap: Math.random() * (endLocations.length / 2),  // About one per half sec
           }));
-
+    
           Globe.arcsData(arcsData)
-          Globe.arcColor('color')
-          Globe.arcDashLength(0.4)
-          Globe.arcStroke(.4)
-          Globe.arcDashGap(4)
-          Globe.arcDashInitialGap((d) => d.initialGap)
-          Globe.arcDashAnimateTime(1000);
-
+            .arcColor('color')
+            .arcDashLength(0.4)
+            .arcStroke(0.4)
+            .arcDashGap(4)
+            .arcDashInitialGap((d) => d.initialGap)
+            .arcDashAnimateTime(1000);
+    
           // Schedule adding markers after the corresponding arcs have finished animating
           arcsData.forEach((arc, index) => {
-              setTimeout(() => {
-                  addMarker(endLocations[index]);
-              }, ((arc.initialGap*1000)));  // arcDashAnimateTime is 1000 ms
+            setTimeout(() => {
+              addMarker(endLocations[index]);
+            }, ((arc.initialGap * 1000)));  // arcDashAnimateTime is 1000 ms
           });
-
         } else {
           console.log('No data found.');
         }
-      }, function(response) {
-        console.error('Failed to get data from Sheets:', response.result.error.message);
-      });
+      } catch (error) {
+        console.error('Failed to get data from Sheets:', error);
+      }
 }
     function addMarker(location) {
         let newMarkerData = {
@@ -167,12 +173,34 @@ fetchApiKey().then(apiKey => {
         console.log(window.innerWidth)
         Globe.htmlElement(d => {
             const el = document.createElement('img');  // Use an image element
-            el.src = 'Hpin.png';  // Set the source of the image
-            el.style.width = `90px`;                  // Set the width of the image
-            el.style.height = 'auto';                 // Maintain the aspect ratio of the image
+            el.src = 'Hpin.png';
+            el.style.width = `3%`;
+            el.style.height = 'auto';
+            el.style.position = 'absolute'; 
+            el.style.transform = 'translate(-50%, 100%)';  // Adjust the position to place the bottom of the image at the poin
             return el;
         });
     }
+
+function addTextBehindEarth() {
+  const div = document.createElement('div');
+  div.className = 'behind-earth';
+  div.textContent = 'BEANS WORLD';
+  div.style.fontSize = Globe.getGlobeRadius();
+  div.style.color = 'white';
+  div.style.textAlign = 'center';
+  div.style.position = 'absolute';
+
+  const textLabel = new CSS2DObject(div);
+
+  const latitude = 0; // Center of the globe
+  const longitude = 0; // Center of the globe
+  const altitude = Globe.getGlobeRadius() * 1.1; // Slightly above the globe surface
+  const { x, y, z } = Globe.getCoords(latitude, longitude, altitude);
+  textLabel.position.set(0, 50, 40);
+
+  scene.add(textLabel);
+}
     
 
     // Setup renderer
@@ -234,24 +262,52 @@ fetchApiKey().then(apiKey => {
     Globe.setPointOfView(camera.position, Globe.position);
     tbControls.addEventListener('change', () => Globe.setPointOfView(camera.position, Globe.position));
 
-    fetchApiKey()
-      // Kick-off renderer
-      // handleClientLoad()
-      let lastUpdateTime = 0; // Timestamp of the last update
-      async function animate() {
-        requestAnimationFrame(animate);
 
-        tbControls.update(); // Rotate independently of refresh rate
 
-        // Get the current timestamp
-        let currentTime = Date.now();
-        
-        // Update data every minute
-        if (currentTime - lastUpdateTime > (endLocations.length * 1000)) {
-          updateGlobeData();  // Call the update function
-          lastUpdateTime = currentTime;  // Update the timestamp
-        }
-        
-        renderers.forEach(renderer => renderer.render(scene, camera));
-      }
-      animate()
+fetchApiKey()
+
+// Kick-off renderer
+// handleClientLoad()
+
+let lastUpdateTime = 0; // Timestamp of the last update
+async function animate() {
+  requestAnimationFrame(animate);
+
+  tbControls.update(); // Rotate independently of refresh rate
+
+  // Get the current timestamp
+  let currentTime = Date.now();
+  
+  // Update data every minute
+  if (currentTime - lastUpdateTime > (endLocations.length * 1000)) {
+    // updateGlobeData();  // Call the update function
+    lastUpdateTime = currentTime;  // Update the timestamp
+  }
+  
+  renderers.forEach(renderer => renderer.render(scene, camera));
+}
+
+// addTextBehindEarth();
+// Function to load and spin the pin image
+function spinPin() {
+  const textureLoader = new THREE.TextureLoader();
+  console.log("Loading image")
+  const pinTexture = textureLoader.load('Hpin.png');
+  const pinMaterial = new THREE.SpriteMaterial({ map: pinTexture });
+  const pinSprite = new THREE.Sprite(pinMaterial);
+  
+  pinSprite.scale.set(0.5, 0.5, 0.5); // Set the size of the pin
+  scene.add(pinSprite);
+
+  // Spin the pin
+  function spin() {
+    pinSprite.rotation.z += 0.01; // Adjust rotation speed here
+    requestAnimationFrame(spin);
+    renderers[0].render(scene, camera)
+  }
+  console.log("SPINNGIN")
+  spin();
+}
+spinPin()
+await sleep(2000)
+animate()

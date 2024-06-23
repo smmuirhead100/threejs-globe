@@ -37,3 +37,16 @@ html, body {
   background: inherit;
   padding: 10px;
 }
+
+.behind-earth {
+  pointer-events: none;
+  font-size: 5em;
+  color: white;
+  text-align: center;
+  position: fixed;
+  top: 50%;  /* Adjust as needed */
+  left: 50%; /* Adjust as needed */
+  transform: translate(-50%, -50%); /* Center the text */
+  z-index: 10;  /* Ensure it's above other elements */
+}
+  
